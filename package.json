@@ -1,0 +1,27 @@
+{
+  "name": "chain-reaction-be",
+  "version": "1.0.0",
+  "description": "Chain Reaction Backend",
+  "author": "Prashant Singh",
+  "license": "ISC",
+  "imports": {
+    "#*": "./src/*"
+  },
+  "scripts": {
+    "dev": "nodemon",
+    "preinstall": "npx only-allow pnpm"
+  },
+  "dependencies": {
+    "axios": "^1.6.1",
+    "body-parser": "^1.20.2",
+    "compression": "^1.7.4",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "helmet": "^7.1.0",
+    "joi": "^17.11.0",
+    "nodemon": "^3.0.1",
+    "redis": "^4.7.0",
+    "socket.io": "^4.7.2"
+  }
+}
