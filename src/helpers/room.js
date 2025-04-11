@@ -1,9 +1,9 @@
 const constants = require('../config/constants');
-const { getCellCapacity } = require('../utils/misc');
+const { getCellCapacity, cellReachedCapacity } = require('../utils/misc');
 const { generateRandomId } = require('./common');
 const { redis } = require('./resource');
 
-const createEmptyRoom = (rows, cols) => {
+const createEmptyMatrix = (rows, cols) => {
   const matrix = [];
 
   for (let x = 0; x < rows; x++) {
@@ -25,14 +25,22 @@ const createEmptyRoom = (rows, cols) => {
 const getRoomKey = (roomCode) => `Room:{${roomCode}}`;
 
 exports.createRoom = (rows, cols) => {
-  const matrix = createEmptyRoom(rows, cols);
+  const matrix = createEmptyMatrix(rows, cols);
   return {
     code: generateRandomId(),
     rows,
     cols,
     state: constants.ROOM_STATE.WAITING,
     matrix,
+    playerIdTurn: '',
   };
+}
+
+const parseRedisRoom = (room) => {
+  return Object.entries(room).reduce((acc, [key, value]) => {
+    acc[key] = JSON.parse(value);
+    return acc;
+  }, {});
 }
 
 exports.exists = async (roomCode) => {
@@ -41,16 +49,21 @@ exports.exists = async (roomCode) => {
 }
 
 exports.getRoom = async (roomCode) => {
-  const response = await redis().get(getRoomKey(roomCode));
-  return JSON.parse(response);
+  const response = await redis().hgetall(getRoomKey(roomCode));
+  return parseRedisRoom(response);
 }
 
-exports.setRoom = (roomCode, payload) => {
-  return redis().set(
+exports.setRoom = async (roomCode, payload) => {
+  const args = Object.entries(payload).reduce((acc, [key, value]) => {
+    acc.push(key, JSON.stringify(value));
+    return acc;
+  }, []);
+  
+  await redis().hset(
     getRoomKey(roomCode),
-    payload,
-    { EX: constants.REDIS_GAME_EXPIRY },
+    ...args,
   );
+  return await redis().expire(getRoomKey(roomCode), constants.REDIS_GAME_EXPIRY);
 }
 
 exports.startGame = async (roomCode) => {
@@ -65,8 +78,8 @@ exports.startGame = async (roomCode) => {
   }
 
   room.state = constants.ROOM_STATE.STARTED;
+  await exports.setRoomState(roomCode, constants.ROOM_STATE.STARTED);
 
-  await exports.setRoom(roomCode, JSON.stringify(room));
   return room;
 }
 
@@ -82,7 +95,38 @@ exports.endGame = async (roomCode) => {
   }
 
   room.state = constants.ROOM_STATE.ENDED;
-
-  await exports.setRoom(roomCode, JSON.stringify(room));
+  await exports.setRoomState(roomCode, constants.ROOM_STATE.ENDED);
+  
   return room;
+}
+
+exports.setNextPlayerTurn = async (roomCode, playerId) => {
+  const exists = await exports.exists(roomCode);
+  if (!exists) {
+    return;
+  }
+  await redis().hset(getRoomKey(roomCode), 'playerIdTurn', JSON.stringify(playerId));
+}
+
+exports.setRoomState = async (roomCode, state) => {
+  const exists = await exports.exists(roomCode);
+  if (!exists) {
+    return;
+  }
+  await redis().hset(getRoomKey(roomCode), 'state', JSON.stringify(state));
+}
+
+exports.addBall = async (roomCode, playerId, row, col) => {
+  const room = await exports.getRoom(roomCode);
+
+  const { rows, cols, matrix } = room;
+
+  if (cellReachedCapacity(col, row, rows, cols, matrix[row][col].count + 1)) {
+    matrix[row][col].count = 0;
+  } else {
+    matrix[row][col].count += 1;
+    matrix[row][col].playerId = playerId;
+  }
+
+  return await redis().hset(getRoomKey(roomCode), 'matrix', JSON.stringify(matrix));
 }

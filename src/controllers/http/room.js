@@ -4,7 +4,7 @@ const RoomHelpers = require('../../helpers/room');
 const PlayerHelpers = require('../../helpers/player');
 const LeaderboardHelpers = require('../../helpers/leaderboard');
 const constants = require('../../config/constants');
-const { data } = require('#container.js');
+const { soc_playerJoined, soc_gameStarted, soc_playerRemoved } = require('../../helpers/socket.js');
 
 const roomCodeValidation = joi.string()
   .min(constants.ROOM_ID_LENGTH)
@@ -33,11 +33,13 @@ exports.create = control({
     // create player
     const player = PlayerHelpers.createPlayer({ roomCode: room.code, playerName, role: constants.PLAYER_ROLE.HOST, totalPlayers: 0 });
 
+    room.playerIdTurn = player.id;
+
     // create leaderboard
     const leaderboard = LeaderboardHelpers.createLeaderboard(room.code, [player.id]);
 
     await Promise.all([
-      RoomHelpers.setRoom(room.code, JSON.stringify(room)),
+      RoomHelpers.setRoom(room.code, room),
       PlayerHelpers.setPlayer(player.id, JSON.stringify(player)),
       LeaderboardHelpers.setLeaderboard(leaderboard.roomCode, JSON.stringify(leaderboard)),
     ]);
@@ -47,33 +49,8 @@ exports.create = control({
     return {
       data: {
         room,
-        player,
+        currentPlayerId: player.id,
         leaderboard: leaderboardWithPlayers,
-      },
-    };
-  },
-});
-
-exports.get = control({
-  validate: (req) => {
-    const paramsSchema = joi.object({
-      roomCode: roomCodeValidation.required(),
-    });
-
-    return validateJoi(paramsSchema, req.params);
-  },
-  exec: async (req, res) => {
-    const { roomCode } = req.params;
-    console.log(roomCode);
-    const room = await RoomHelpers.getRoom(roomCode);
-
-    if (!room) {
-      throw new Error('room.NOT_FOUND');
-    }
-
-    return {
-      data: {
-        room,
       },
     };
   },
@@ -102,11 +79,10 @@ exports.getAll = control({
 
     const { leaderboardWithPlayers } = leaderboardData;
 
-
     return {
       data: {
         room,
-        player,
+        currentPlayerId: playerId,
         leaderboard: leaderboardWithPlayers,
       },
     };
@@ -149,11 +125,12 @@ exports.join = control({
       LeaderboardHelpers.addPlayerToLeaderboard(roomCode, player),
     ])
 
+    soc_playerJoined(roomCode, player);
 
     return {
       data: {
         room,
-        player,
+        currentPlayerId: player.id,
         leaderboard: leaderboardWithPlayers,
       },
     };
@@ -162,18 +139,21 @@ exports.join = control({
 
 exports.start = control({
   validate: (req) => {
-    const bodySchema = joi.object({
+    const paramsSchema = joi.object({
       roomCode: roomCodeValidation.required(),
     });
 
-    return validateJoi(bodySchema, req.body);
+    return validateJoi(paramsSchema, req.params);
   },
   exec: async (req, res) => {
-    const { roomCode } = req.body;
+    const { roomCode } = req.params;
     const room = await RoomHelpers.startGame(roomCode);
+    soc_gameStarted(roomCode);
 
     return {
-      room,
+      data: {
+        room,
+      },
     };
   },
 });
@@ -193,7 +173,8 @@ exports.isValid = control({
     if(!roomCode && !playerId) {
       return {
         data: {
-          isValid: false,
+          room: null,
+          player: null,
         }
       };
     }
@@ -223,6 +204,40 @@ exports.isValid = control({
       data: {
         room,
         player,
+      },
+    };
+  },
+});
+
+exports.removePlayer = control({
+  validate: (req) => {
+    const paramsSchema = joi.object({
+      roomCode: roomCodeValidation.required(),
+      playerId: playerIdValidation.required(),
+    });
+
+    return validateJoi(paramsSchema, req.params);
+  },
+  exec: async (req, res) => {
+    const { roomCode, playerId } = req.params;
+
+    const room = await RoomHelpers.getRoom(roomCode);
+    if(!room) {
+      throw new Error('room.NOT_FOUND');
+    }
+
+    if(room.state !== constants.ROOM_STATE.WAITING) {
+      throw new Error('room.NOT_WAITING');
+    }
+    
+    await LeaderboardHelpers.removePlayerFromLeaderboard(roomCode, playerId);
+    await PlayerHelpers.removePlayer(playerId);
+
+    soc_playerRemoved(roomCode, playerId);
+
+    return {
+      data: {
+        playerId,
       },
     };
   },

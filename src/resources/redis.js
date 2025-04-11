@@ -1,4 +1,4 @@
-const { createClient } = require('redis');
+const { Redis: IORedis } = require('ioredis');
 const container = require('../container');
 const config = require('../config');
 
@@ -11,37 +11,60 @@ function retryStrategy(times) {
 }
 
 class Redis {
-  client;
+  _client;
 
-  getRedisAddress() {
-    return `redis://${config.redis.host}:${config.redis.port}`
-  }
+  // getRedisAddress() {
+  //   return `redis://${config.redis.host}:${config.redis.port}`
+  // }
 
   async load() {
-    this.client = createClient({
-      url: this.getRedisAddress(),
-      socket: {
-        reconnectStrategy: retryStrategy,
-      },
-    });
+    return new Promise((resolve, reject) => {
+      this._client = new IORedis({
+        port: config.redis.port,
+        host: config.redis.host,
+        retryStrategy,
+      });
 
-    this.registerHooks();
-    await this.client.connect();
-    container.add('redis', this.client);
+      // this.client = createClient({
+      //   url: this.getRedisAddress(),
+      //   socket: {
+      //     reconnectStrategy: retryStrategy,
+      //   },
+      // });
+
+      this._client.on('connect', () => {
+        console.log(`[REDIS]: Connected`);
+        resolve();
+      });
+      this._client.on('error', err => {
+        throw new Error('[REDIS]: error', err);
+      });
+      this._client.on('close', () => {
+        throw new Error('[REDIS]: Closed');
+      });
+      this._client.on('reconnecting', (time) => {
+        console.log(`[REDIS]: Reconnecting`);
+      });
+      this._client.on('end', () => {
+        throw new Error('[REDIS]: Ended');
+      });
+
+      container.add('redis', this._client);
+    });
   }
 
   registerHooks() {
-    this.client.on('connect', () => {
+    this._client.on('connect', () => {
       console.log(`[REDIS]: Connected`);
     });
-    this.client.on('error', err => console.log('Redis Client Error', err));
-    this.client.on('close', () => {
+    this._client.on('error', err => console.log('Redis Client Error', err));
+    this._client.on('close', () => {
       throw new Error('[REDIS]: Closed');
     });
-    this.client.on('reconnecting', (time) => {
+    this._client.on('reconnecting', (time) => {
       console.log(`[REDIS]: Reconnecting`);
     });
-    this.client.on('end', () => {
+    this._client.on('end', () => {
       throw new Error('[REDIS]: Ended');
     });
   }

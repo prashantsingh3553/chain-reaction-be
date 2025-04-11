@@ -1,5 +1,4 @@
-const redis = require('./resources/redis');
-const container = require('./container');
+const redis = require('../resources/redis');
 
 module.exports = async () => {
   await redis.load();

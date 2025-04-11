@@ -30,7 +30,7 @@ exports.getPlayer = async (playerId) => {
 }
 
 exports.getPlayers = async (playerIds = []) => {
-  const response = await redis().mGet(playerIds.map(getPlayerKey));
+  const response = await redis().mget(playerIds.map(getPlayerKey));
   return response.map(data => JSON.parse(data));
 }
 
@@ -38,6 +38,11 @@ exports.setPlayer = (playerId, payload) => {
   return redis().set(
     getPlayerKey(playerId),
     payload,
-    { EX: constants.REDIS_PLAYER_EXPIRY },
+    'EX',
+    constants.REDIS_PLAYER_EXPIRY,
   );
+}
+
+exports.removePlayer = async (playerId) => {
+  await redis().del(getPlayerKey(playerId));
 }

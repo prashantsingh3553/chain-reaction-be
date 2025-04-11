@@ -33,7 +33,6 @@ exports.getLeaderboard = async (roomCode, populatePlayers = true) => {
       ...player,
       score: leaderboard.players[player.id],
     };
-    const a = 10;
   });
 
   return { leaderboard, leaderboardWithPlayers };
@@ -56,6 +55,16 @@ exports.setLeaderboard = (roomCode, payload) => {
   return redis().set(
     getLeaderboardKey(roomCode),
     payload,
-    { EX: constants.REDIS_LEADERBOARD_EXPIRY },
+    'EX',
+    constants.REDIS_LEADERBOARD_EXPIRY,
   );
+}
+
+exports.removePlayerFromLeaderboard = async (roomCode, playerId) => {
+  const { leaderboard } = await exports.getLeaderboard(roomCode);
+  delete leaderboard.players[playerId];
+
+  await exports.setLeaderboard(roomCode, JSON.stringify(leaderboard));
+
+  return leaderboard;
 }

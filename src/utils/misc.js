@@ -14,8 +14,8 @@ exports.isSideBox = (x, y, rows, cols) => {
     !exports.isCornerBox(x, y, rows, cols) &&
     (x === 0 ||
       y === 0 ||
-      x === rows.value - 1 ||
-      y === cols.value - 1)
+      x === rows - 1 ||
+      y === cols - 1)
   );
 }
 
@@ -33,3 +33,8 @@ exports.getPosition = (x, y, rows, cols) => {
 }
 
 exports.getCellCapacity = (x, y, rows, cols) => constants.CAPACITY[exports.getPosition(x, y, rows, cols)];
+
+exports.cellReachedCapacity = (x, y, rows, cols, count) => {
+  const capacity = exports.getCellCapacity(x, y, rows, cols);
+  return count >= capacity;
+}

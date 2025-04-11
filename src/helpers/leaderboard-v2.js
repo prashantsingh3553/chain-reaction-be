@@ -35,6 +35,7 @@ exports.setLeaderboard = (roomCode, payload) => {
   return redis().set(
     getLeaderboardKey(roomCode),
     payload,
-    { EX: constants.REDIS_LEADERBOARD_EXPIRY },
+    'EX',
+    constants.REDIS_LEADERBOARD_EXPIRY,
   );
 }

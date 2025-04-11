@@ -11,9 +11,9 @@ const CAPACITY = {
 }
 
 module.exports = {
-  REDIS_GAME_EXPIRY: 5 * 60 * 60, // expiry for half hour
-  REDIS_PLAYER_EXPIRY: 5 * 60 * 60, // expiry for half hour
-  REDIS_LEADERBOARD_EXPIRY: 5 * 60 * 60, // expiry for half hour
+  REDIS_GAME_EXPIRY: 5 * 60 * 60, // expiry for 5 hour
+  REDIS_PLAYER_EXPIRY: 5 * 60 * 60, // expiry for 5 hour
+  REDIS_LEADERBOARD_EXPIRY: 5 * 60 * 60, // expiry for 5 hour
 
   ROOM_ID_LENGTH: 4,
   PLAYER_ID_LENGTH: 4,

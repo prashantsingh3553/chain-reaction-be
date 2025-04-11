@@ -4,5 +4,5 @@
 	],
 	"verbose": true,
 	"delay": 1000,
-	"exec": "node --inspect --enable-source-maps src/app.js"
+	"exec": "node --inspect --enable-source-maps src/index.js"
 }
