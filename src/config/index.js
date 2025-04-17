@@ -1,9 +1,14 @@
-module.exports = {
-  env: 'dev',
-  port: 8080,
+const dotenv = require('dotenv');
 
-  redis: {
-    host: 'localhost',
-    port: 6379,
-  },  
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config();
+} else {
+  dotenv.config({ path: '.env.production' });
+}
+
+module.exports = {
+  env: process.env.NODE_ENV || 'development',
+  port: process.env.PORT || 8080,
+
+  redis: process.env.REDIS || '',
 };

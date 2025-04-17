@@ -13,24 +13,9 @@ function retryStrategy(times) {
 class Redis {
   _client;
 
-  // getRedisAddress() {
-  //   return `redis://${config.redis.host}:${config.redis.port}`
-  // }
-
   async load() {
     return new Promise((resolve, reject) => {
-      this._client = new IORedis({
-        port: config.redis.port,
-        host: config.redis.host,
-        retryStrategy,
-      });
-
-      // this.client = createClient({
-      //   url: this.getRedisAddress(),
-      //   socket: {
-      //     reconnectStrategy: retryStrategy,
-      //   },
-      // });
+      this._client = new IORedis(config.redis);
 
       this._client.on('connect', () => {
         console.log(`[REDIS]: Connected`);
