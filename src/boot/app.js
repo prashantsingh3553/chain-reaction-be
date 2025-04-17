@@ -5,6 +5,7 @@ const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const roomRouter = require('../routes/room');
+const metaRouter = require('../routes/meta');
 
 module.exports = () => {
   const app = express();
@@ -33,6 +34,7 @@ module.exports = () => {
   }));
 
   app.use('/', roomRouter);
+  app.use('/', metaRouter);
 
   return app;
 }
